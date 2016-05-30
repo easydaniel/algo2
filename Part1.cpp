@@ -2,10 +2,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include <map>
-#include <queue>
 using namespace std;
-
 
 class Node {
 public:
@@ -14,10 +11,9 @@ public:
   int weight;
   string type;
   Node *left, *right, *parent;
-
-  Node (unsigned char s, string t) {
-    symbol = s;
-    weight = (t == "NYT" ? 0 : 1);
+  Node (string t) {
+    symbol = 'X';
+    weight = (t != "NYT");
     type = t;
     left = NULL;
     right = NULL;
@@ -33,48 +29,72 @@ public:
   // member
   Node *root, *NYT;
 
-  HuffmanTree (unsigned char s, string t) {
-    root = new Node(s, t);
+  HuffmanTree () {
+    root = new Node("ROOT");
     NYT = root;
   };
 
   Node* Find(unsigned char& s, Node* r) {
-    if (r->symbol == s) {
-      return r;
-    } else {
-      if (r->left != NULL and r->left->type != "NYT") {
-        return Find(s, r->left);
-      } else if (r->right != NULL and r->right->type != "NYT") {
-        return Find(s, r->right);
-      } else {
-        return NULL;
-      }
+    if (r == NULL) {
+      return NULL;
     }
+    if (r->type == "LEAF" && r->symbol == s) {
+      return r;
+    }
+    Node* f = Find(s, r->left);
+    if (f == NULL) {
+      return Find(s, r->right);
+    }
+    return f;
   };
 
-  void Insert(unsigned char s, string t) {
+  void InOrderTranverse(Node* r) {
+    if (r == NULL) {
+      return;
+    }
+    InOrderTranverse(r->left);
+    cout << r->symbol << ' ' << r->weight << ' ' << r->type << endl;
+    InOrderTranverse(r->right);
+  }
+
+  void Insert(unsigned char s) {
     if (NYT == root) {
-      NYT = new Node('@', "NYT");
+      NYT = new Node("NYT");
       NYT->parent = root;
       root->left = NYT;
-      root->right = new Node(s, w, t);
+      root->left->parent = root;
+      root->right = new Node("LEAF");
+      root->right->symbol = s;
       root->right->parent = root;
     } else {
-      Node* s = Find(s, root);
-      if (s == NULL) {
+      Node* r = Find(s, root);
+      if (r == NULL) {
         // New symbol
-        Node* p = NYT->parent;
-        NYT->left = new Node('@', "NYT");
+        Node* now = NYT;
+        now->type = "INTERNAL";
+        now->left = new Node("NYT");
+        now->right = new Node("LEAF");
+        now->right->symbol = s;
+        now->left->parent = now;
+        now->right->parent = now;
+        NYT = now->left;
+        while (now->parent != NULL) {
+          now->weight++;
+          now = now->parent;
+        }
+        now->weight++;
       } else {
         // Exist - add weight to ancestors
-        while(s->parent != NULL) {
-          s->weight++;
-          s = s->parent;
+        while(r->parent != NULL) {
+          r->weight++;
+          r = r->parent;
         }
-        // s == root
-        s->weight++;
+        // r == root
+        r->weight++;
       }
       // Maintain tree
+      cout << "----- Insert " << s << " -----" << endl;
+      this->InOrderTranverse(root);
     }
   };
 
@@ -95,26 +115,13 @@ void encode(const char* src, const char* dest) {
   vector<char> buffer(size);
 
   // Construct NYT node with some value;
-  HuffmanTree HT('@', "NYT");
+  HuffmanTree HT;
 
   // parse symbols
   if (file.read(buffer.data(), size)) {
-
-    Node* NYT = HT.GetNYT(HT.root);
-    cout << NYT->type << " " << NYT->weight << endl;
-
     for(unsigned char c : buffer) {
-      Node* cur = HT.Find(c, HT.root);
-      if (cur == NULL) {
-        // new symbol - construct one
-        HT.Insert(c, "LEAF");
-      } else {
-        // old symbol - add weight
-        cout << cur->symbol << " " << cur->weight << " " << cur->type << " exist" << endl;
-      }
+      HT.Insert(c);
     }
-
-    cout << NYT->type << " " << NYT->weight << endl;
 
   } else {
     cout << "Read file error" << endl;
