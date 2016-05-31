@@ -82,7 +82,7 @@ public:
     vector<Node*> link;
     link.push_back(root);
     int cnt = 0;
-    int pos = -1;
+    int pos = 0;
     while (cnt < link.size()) {
       if (link[cnt] == r) {
         pos = cnt;
@@ -210,8 +210,12 @@ void decode(const char* src, const char* dest) {
           }
           unsigned char c = w;
           ofile << c;
+          cout << "FindNYT" << endl;
           Node *NYT = HT.FindNYT(HT.root);
+          cout << "FindNYT - done" << endl;
+          cout << "Find" << endl;
           Node *ins = HT.Find(c, HT.root);
+          cout << "Find - done" << endl;
           HT.Insert(c, NYT, ins);
           i += 8;
           CUR = HT.root;
@@ -219,8 +223,12 @@ void decode(const char* src, const char* dest) {
       } else if (CUR->type == "LEAF") {
         // Exist symbol
         ofile << CUR->symbol;
+        cout << "FindNYT" << endl;
         Node *NYT = HT.FindNYT(HT.root);
+        cout << "FindNYT - done" << endl;
+        cout << "Find" << endl;
         Node *ins = HT.Find(CUR->symbol, HT.root);
+        cout << "Find - done" << endl;
         HT.Insert(CUR->symbol, NYT, ins);
         CUR = HT.root;
       } else {
@@ -233,7 +241,6 @@ void decode(const char* src, const char* dest) {
         i++;
       }
     }
-
   } else {
     cout << "Read file error" << endl;
   }
@@ -272,19 +279,22 @@ void encode(const char* src, const char* dest) {
       } else {
         if (ins == NULL) {
           // Still having symbol, insert 0
-          binary += HT.GetPath(NYT, "");
+          string s = "";
+          binary += HT.GetPath(NYT, s);
           binary += "0" + toBinary(c);
         } else {
           // Exist symbol, add path
-          binary += HT.GetPath(ins, "");
+          string s = "";
+          binary += HT.GetPath(ins, s);
         }
       }
       HT.Insert(c, NYT, ins);
     }
 
     // EOF insert
+    string s = "";
     Node *NYT = HT.FindNYT(HT.root);
-    binary += HT.GetPath(NYT, "");
+    binary += HT.GetPath(NYT, s);
     binary += "1";
 
     // Trailing bits, making 8n bits

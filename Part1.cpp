@@ -82,7 +82,7 @@ public:
     vector<Node*> link;
     link.push_back(root);
     int cnt = 0;
-    int pos = -1;
+    int pos = 0;
     while (cnt < link.size()) {
       if (link[cnt] == r) {
         pos = cnt;
@@ -106,7 +106,9 @@ public:
         pr = link[i];
       }
     }
-    
+
+    link.clear();
+
     // Need swap
     if (pr != NULL) {
       Node *tmp = r->parent;
