@@ -13,32 +13,32 @@ public:
   Node *left, *right, *parent;
   Node (string t) {
     symbol = 'X';
-    weight = (t != "NYT");
+    weight = 0;
     type = t;
     left = NULL;
     right = NULL;
     parent = NULL;
   };
+  friend ostream& operator<< (ostream &out, const Node *n) {
+    out << "(" << n->weight << "," << n->type << "," << n->symbol << ")";
+    return out;
+  }
 
 };
-
-
 
 class HuffmanTree {
 public:
   // member
-  Node *root, *NYT;
-
+  Node *root;
   HuffmanTree () {
-    root = new Node("ROOT");
-    NYT = root;
+    root = new Node("NYT");
   };
 
   Node* Find(unsigned char& s, Node* r) {
     if (r == NULL) {
       return NULL;
     }
-    if (r->type == "LEAF" && r->symbol == s) {
+    if (r->symbol == s) {
       return r;
     }
     Node* f = Find(s, r->left);
@@ -48,69 +48,121 @@ public:
     return f;
   };
 
-  void InOrderTranverse(Node* r) {
+  Node* FindNYT(Node *r) {
     if (r == NULL) {
-      return;
+      return NULL;
     }
-    InOrderTranverse(r->left);
-    cout << r->symbol << ' ' << r->weight << ' ' << r->type << endl;
-    InOrderTranverse(r->right);
+    if (r != root && r->type == "NYT") {
+      return r;
+    }
+    Node *t = FindNYT(r->left);
+    if (t == NULL) {
+      return FindNYT(r->right);
+    }
+    return t;
   }
 
-  void Insert(unsigned char s) {
-    if (NYT == root) {
-      NYT = new Node("NYT");
-      NYT->parent = root;
-      root->left = NYT;
-      root->left->parent = root;
-      root->right = new Node("LEAF");
-      root->right->symbol = s;
-      root->right->parent = root;
+  string GetPath(Node *r, string p) {
+    if (r->parent == NULL) {
+      return p;
     } else {
-      Node* r = Find(s, root);
-      if (r == NULL) {
-        // New symbol
-        Node* now = NYT;
-        now->type = "INTERNAL";
-        now->left = new Node("NYT");
-        now->right = new Node("LEAF");
-        now->right->symbol = s;
-        now->left->parent = now;
-        now->right->parent = now;
-        NYT = now->left;
-        while (now->parent != NULL) {
-          now->weight++;
-          now = now->parent;
-        }
-        now->weight++;
-      } else {
-        // Exist - add weight to ancestors
-        while(r->parent != NULL) {
-          r->weight++;
-          r = r->parent;
-        }
-        // r == root
-        r->weight++;
-      }
-      // Maintain tree
-      cout << "----- Insert " << s << " -----" << endl;
-      this->InOrderTranverse(root);
+      return r->parent->left == r ? GetPath(r->parent, p) + "0": GetPath(r->parent, p) + "1";
     }
   };
 
+  void Update(Node *r) {
+
+    r->weight++;
+    Node *pr = NULL;
+
+    // Get Order list
+    vector<Node*> link;
+    link.push_back(root);
+    int cnt = 0;
+    int pos = -1;
+    while (cnt < link.size()) {
+      if (link[cnt] == r) {
+        pos = cnt;
+      }
+      if (link[cnt]->right != NULL) {
+        link.push_back(link[cnt]->right);
+      }
+      if (link[cnt]->left != NULL) {
+        link.push_back(link[cnt]->left);
+      }
+      cnt++;
+    }
+
+    for (int i = pos; i >= 0; i--) {
+      // Skip parent
+      if (link[i] == r->parent) {
+        continue;
+      }
+      // Remember the lattest small one
+      if (link[i]->weight < r->weight) {
+        pr = link[i];
+      }
+    }
+
+    // Need swap
+    if (pr != NULL) {
+      Node *tmp = r->parent;
+      r->parent = pr->parent;
+      pr->parent = tmp;
+
+      if (r->parent->left == pr) {
+        r->parent->left = r;
+      } else {
+        r->parent->right = r;
+      }
+      if (pr->parent->left == r) {
+        pr->parent->left = pr;
+      } else {
+        pr->parent->right = pr;
+      }
+
+    }
+    // Continue until r == root
+    if (r->parent != NULL) {
+      Update(r->parent);
+    }
+  }
+
+  void Insert(unsigned char s, Node *NYT, Node *ins) {
+    if (NYT == NULL) {
+      // First insert
+      root->type = "ROOT";
+      root->weight = 1;
+      root->left = new Node("NYT");
+      root->left->parent = root;
+      root->right = new Node("LEAF");
+      root->right->parent = root;
+      root->right->weight = 1;
+      root->right->symbol = s;
+    } else {
+      if (ins == NULL) {
+        // New symbol
+        NYT->type = "INTERNAL";
+        NYT->left = new Node("NYT");
+        NYT->left->parent = NYT;
+        NYT->right = new Node("LEAF");
+        NYT->right->parent = NYT;
+        NYT->right->symbol = s;
+        ins = NYT->right;
+      }
+      Update(ins);
+    }
+  };
 };
 
 void decode(const char* src, const char* dest) {
-  cout << "Decode" << endl;
-}
-
-void encode(const char* src, const char* dest) {
   // file stream
-  ifstream file(src, ios::binary | ios::ate);
+  ifstream ifile(src, ios::binary | ios::ate);
+  ofstream ofile(dest,ios::binary | ios::out);
   // get file size
-  streamsize size = file.tellg();
+  streamsize size = ifile.tellg();
   // initialize roll back to beginning
-  file.seekg(0, ios::beg);
+  ifile.seekg(0, ios::beg);
   // buffer to store
   vector<char> buffer(size);
 
@@ -118,14 +170,85 @@ void encode(const char* src, const char* dest) {
   HuffmanTree HT;
 
   // parse symbols
-  if (file.read(buffer.data(), size)) {
-    for(unsigned char c : buffer) {
-      HT.Insert(c);
+  if (ifile.read(buffer.data(), size)) {
+    // Remove eof
+    buffer.pop_back();
+    size_t i = 0;
+    while (i < size) {
+
+      Node *CUR = HT.root;
+      unsigned char c = buffer[i];
+      while (CUR->type != "NYT") {
+        if (c == '0') {
+          CUR = CUR->left;
+        } else {
+          CUR = CUR->right;
+        }
+        if (CUR->type == "LEAF") {
+          c = CUR->symbol;
+          break;
+        }
+        i++;
+        c = buffer[i];
+      }
+
+      ofile << c;
+      Node *NYT = HT.FindNYT(HT.root);
+      Node *ins = HT.Find(c, HT.root);
+      HT.Insert(c, NYT, ins);
+
+      i++;
     }
 
   } else {
     cout << "Read file error" << endl;
   }
+  // Close fstream
+  ofile.close();
+  ifile.close();
+}
+
+void encode(const char* src, const char* dest) {
+  // file stream
+  ifstream ifile(src, ios::binary | ios::ate);
+  ofstream ofile(dest,ios::binary | ios::out);
+  // get file size
+  streamsize size = ifile.tellg();
+  // initialize roll back to beginning
+  ifile.seekg(0, ios::beg);
+  // buffer to store
+  vector<char> buffer(size);
+
+  // Construct NYT node with some value;
+  HuffmanTree HT;
+
+  // parse symbols
+  if (ifile.read(buffer.data(), size)) {
+    buffer.pop_back();
+    for(unsigned char c : buffer) {
+      // Insert nodes
+      Node *NYT = HT.FindNYT(HT.root);
+      Node *ins = HT.Find(c, HT.root);
+      if (NYT == NULL) {
+        ofile << c;
+      } else {
+        if (ins == NULL) {
+          ofile << HT.GetPath(NYT, "");
+          ofile << c;
+        } else {
+          ofile << HT.GetPath(ins, "");
+        }
+      }
+      HT.Insert(c, NYT, ins);
+    }
+
+
+  } else {
+    cout << "Read file error" << endl;
+  }
+  // Close fstream
+  ofile.close();
+  ifile.close();
 }
 
 int main(int argc, char const *argv[]) {
