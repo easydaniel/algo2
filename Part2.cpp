@@ -194,8 +194,9 @@ void decode(const char* src, const char* dest) {
     }
 
     unsigned long long i = 0;
+    unsigned long long len = binary.size();
     Node *CUR = HT.root;
-    while (true) {
+    while (i < len) {
       if (CUR->type == "NYT") {
         if (binary[i] == '1') {
           // EOF
