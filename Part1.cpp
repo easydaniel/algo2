@@ -171,8 +171,6 @@ void decode(const char* src, const char* dest) {
 
   // parse symbols
   if (ifile.read(buffer.data(), size)) {
-    // Remove eof
-    buffer.pop_back();
     size_t i = 0;
     while (i < size) {
 
@@ -224,7 +222,6 @@ void encode(const char* src, const char* dest) {
 
   // parse symbols
   if (ifile.read(buffer.data(), size)) {
-    buffer.pop_back();
     for(unsigned char c : buffer) {
       // Insert nodes
       Node *NYT = HT.FindNYT(HT.root);
