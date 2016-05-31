@@ -40,7 +40,7 @@ public:
     if (r == NULL) {
       return NULL;
     }
-    if (r->symbol == s) {
+    if (r->type == "LEAF" && r->symbol == s) {
       return r;
     }
     Node* f = Find(s, r->left);

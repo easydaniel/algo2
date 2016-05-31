@@ -39,7 +39,7 @@ public:
     if (r == NULL) {
       return NULL;
     }
-    if (r->symbol == s) {
+    if (r->type == "LEAF" && r->symbol == s) {
       return r;
     }
     Node* f = Find(s, r->left);
@@ -69,7 +69,8 @@ public:
     if (r->parent == NULL) {
       return p;
     } else {
-      return r->parent->left == r ? GetPath(r->parent, p) + "0": GetPath(r->parent, p) + "1";
+      string t = GetPath(r->parent, p);
+      return r->parent->left == r ? t + "0": t + "1";
     }
   };
 
@@ -125,7 +126,6 @@ public:
       } else {
         pr->parent->right = pr;
       }
-
     }
     // Continue until r == root
     if (r->parent != NULL) {
@@ -155,9 +155,7 @@ public:
         NYT->right->symbol = s;
         ins = NYT->right;
       }
-      cout << "Up" << endl;
       Update(ins);
-      cout << "date" << endl;
     }
   };
 };
@@ -213,7 +211,6 @@ void decode(const char* src, const char* dest) {
           unsigned char c = w;
           ofile << c;
           Node *NYT = HT.FindNYT(HT.root);
-          cout << "FindNYT - done" << endl;
           Node *ins = HT.Find(c, HT.root);
           HT.Insert(c, NYT, ins);
           i += 8;
