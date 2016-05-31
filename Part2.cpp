@@ -155,7 +155,9 @@ public:
         NYT->right->symbol = s;
         ins = NYT->right;
       }
+      cout << "Up" << endl;
       Update(ins);
+      cout << "date" << endl;
     }
   };
 };
@@ -210,12 +212,9 @@ void decode(const char* src, const char* dest) {
           }
           unsigned char c = w;
           ofile << c;
-          cout << "FindNYT" << endl;
           Node *NYT = HT.FindNYT(HT.root);
           cout << "FindNYT - done" << endl;
-          cout << "Find" << endl;
           Node *ins = HT.Find(c, HT.root);
-          cout << "Find - done" << endl;
           HT.Insert(c, NYT, ins);
           i += 8;
           CUR = HT.root;
@@ -223,12 +222,8 @@ void decode(const char* src, const char* dest) {
       } else if (CUR->type == "LEAF") {
         // Exist symbol
         ofile << CUR->symbol;
-        cout << "FindNYT" << endl;
         Node *NYT = HT.FindNYT(HT.root);
-        cout << "FindNYT - done" << endl;
-        cout << "Find" << endl;
         Node *ins = HT.Find(CUR->symbol, HT.root);
-        cout << "Find - done" << endl;
         HT.Insert(CUR->symbol, NYT, ins);
         CUR = HT.root;
       } else {
@@ -267,9 +262,6 @@ void encode(const char* src, const char* dest) {
   if (ifile.read(buffer.data(), size)) {
     string binary;
     for(unsigned char c : buffer) {
-      if (c == '\n') {
-        continue;
-      }
       // Insert nodes
       Node *NYT = HT.FindNYT(HT.root);
       Node *ins = HT.Find(c, HT.root);
