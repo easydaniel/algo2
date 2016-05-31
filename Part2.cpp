@@ -19,7 +19,6 @@ public:
     right = NULL;
     parent = NULL;
   };
-  // __repr__
   friend ostream& operator<< (ostream &out, const Node *n) {
     out << "(" << n->weight << "," << n->type << "," << n->symbol << ")";
     return out;
@@ -35,7 +34,7 @@ public:
     root = new Node("NYT");
   };
 
-  // Find specific node with symbol s
+  // Find the node with symbol s
   Node* Find(unsigned char& s, Node* r) {
     if (r == NULL) {
       return NULL;
@@ -66,7 +65,7 @@ public:
   }
 
   // Get the path to the node
-  string GetPath(Node *r, string p) {
+  string GetPath(Node *r, string &p) {
     if (r->parent == NULL) {
       return p;
     } else {
@@ -75,10 +74,11 @@ public:
   };
 
   void Update(Node *r) {
-    // increase weight
+
     r->weight++;
     Node *pr = NULL;
-    // Get Order list using bfs
+
+    // Get Order list
     vector<Node*> link;
     link.push_back(root);
     int cnt = 0;
@@ -106,7 +106,9 @@ public:
         pr = link[i];
       }
     }
-    
+
+    link.clear();
+
     // Need swap
     if (pr != NULL) {
       Node *tmp = r->parent;
@@ -158,6 +160,17 @@ public:
   };
 };
 
+// convert char to binary repr
+string toBinary(unsigned char &c) {
+  string re;
+  unsigned int s = c;
+  for (size_t i = 0; i < 8; i++) {
+    re = char((s % 2) + '0') + re;
+    s /= 2;
+  }
+  return re;
+}
+
 void decode(const char* src, const char* dest) {
   // file stream
   ifstream ifile(src, ios::binary | ios::ate);
@@ -174,31 +187,51 @@ void decode(const char* src, const char* dest) {
 
   // parse symbols
   if (ifile.read(buffer.data(), size)) {
-    size_t i = 0;
-    while (i < size) {
+    string binary;
+    // decode binary
+    for(unsigned char c : buffer) {
+      binary += toBinary(c);
+    }
 
-      Node *CUR = HT.root;
-      unsigned char c = buffer[i];
-      while (CUR->type != "NYT") {
-        if (c == '0') {
+    unsigned long long i = 0;
+    Node *CUR = HT.root;
+    while (true) {
+      if (CUR->type == "NYT") {
+        if (binary[i] == '1') {
+          // EOF
+          break;
+        } else {
+          // New symbol
+          i++;
+          unsigned int w = 0;
+          for (size_t j = 0; j < 8; j++) {
+            w <<= 1;
+            w += (binary[i+j] - '0');
+          }
+          unsigned char c = w;
+          ofile << c;
+          Node *NYT = HT.FindNYT(HT.root);
+          Node *ins = HT.Find(c, HT.root);
+          HT.Insert(c, NYT, ins);
+          i += 8;
+          CUR = HT.root;
+        }
+      } else if (CUR->type == "LEAF") {
+        // Exist symbol
+        ofile << CUR->symbol;
+        Node *NYT = HT.FindNYT(HT.root);
+        Node *ins = HT.Find(CUR->symbol, HT.root);
+        HT.Insert(CUR->symbol, NYT, ins);
+        CUR = HT.root;
+      } else {
+        // Walk the path
+        if (binary[i] == '0') {
           CUR = CUR->left;
         } else {
           CUR = CUR->right;
         }
-        if (CUR->type == "LEAF") {
-          c = CUR->symbol;
-          break;
-        }
         i++;
-        c = buffer[i];
       }
-
-      ofile << c;
-      Node *NYT = HT.FindNYT(HT.root);
-      Node *ins = HT.Find(c, HT.root);
-      HT.Insert(c, NYT, ins);
-
-      i++;
     }
 
   } else {
@@ -225,33 +258,57 @@ void encode(const char* src, const char* dest) {
 
   // parse symbols
   if (ifile.read(buffer.data(), size)) {
+    string binary;
     for(unsigned char c : buffer) {
+      if (c == '\n') {
+        continue;
+      }
       // Insert nodes
       Node *NYT = HT.FindNYT(HT.root);
       Node *ins = HT.Find(c, HT.root);
       if (NYT == NULL) {
-        // first insert
-        ofile << c;
+        // First insert 0 as symbol
+        binary += "0" + toBinary(c);
       } else {
         if (ins == NULL) {
-          // new symbol
-          ofile << HT.GetPath(NYT, "");
-          ofile << c;
+          // Still having symbol, insert 0
+          binary += HT.GetPath(NYT, "");
+          binary += "0" + toBinary(c);
         } else {
-          // path to exist symbol
-          ofile << HT.GetPath(ins, "");
+          // Exist symbol, add path
+          binary += HT.GetPath(ins, "");
         }
       }
       HT.Insert(c, NYT, ins);
     }
 
+    // EOF insert
+    Node *NYT = HT.FindNYT(HT.root);
+    binary += HT.GetPath(NYT, "");
+    binary += "1";
 
+    // Trailing bits, making 8n bits
+    while(binary.size() % 8 != 0) {
+      binary += "0";
+    }
+
+    // Write binary to file, using ull for huge file
+    unsigned long long len = binary.size();
+    unsigned int w = 0;
+    for (unsigned long long i = 0; i < len; i++) {
+      w <<= 1;
+      w += (binary[i] - '0');
+      if (i != 0 && (i+1) % 8 == 0) {
+        ofile << char(w);
+        w = 0;
+      }
+    }
   } else {
     cout << "Read file error" << endl;
   }
   // Close fstream
-  ofile.close();
   ifile.close();
+  ofile.close();
 }
 
 int main(int argc, char const *argv[]) {
